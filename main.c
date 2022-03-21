@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
+#include <string.h>
 
 #define ARRAY_SIZE(a)sizeof(a)/sizeof(a[0])
 
@@ -142,8 +143,19 @@ void selectionSort(int *a, const int n) {
     }
 }
 
+long long getNCmpsOfSelectionSort(int *array, const size_t size) {
+    long long countComp = 0;
+    for (int i = 0; i < size - 1 && ++countComp; i++) {
+        int minPos = i;
+        for (int j = i + 1; j < size && ++countComp; j++)
+            if (array[j] < array[minPos] && ++countComp)
+                minPos = j;
+        swap(&array[i], &array[minPos]);
+    }
+    return countComp;
+}
 
-void Shellsort(int* a, int length) {
+void shellSort(int* a, int length) {
     unsigned step = length / 2, compare = 0, swap = 0;
     while (step > 0) {
         for (int i = 0; i < length; i++) {
@@ -162,11 +174,38 @@ void Shellsort(int* a, int length) {
     }
 }
 
+long long getNCmpsOfShell(int *array, const size_t size) {
+    long long countComp = 0;
+    for (size_t step = size / 2; step > 0 && ++countComp; step /= 2)
+        for (size_t i = step; i < size && ++countComp; i++) {
+            int tmp = array[i];
+            size_t j;
+            for (j = i; j >= step && ++countComp; j -= step) {
+                if (tmp < array[j - step] && ++countComp)
+                    array[j] = array[j - step];
+                else
+                    break;
+            }
+            array[j] = tmp;
+        }
+    return countComp;
+}
+
 void bubbleSort(int *a, size_t size) {
-    for (size_t i = 0; i < size - 1; i++)
-        for (size_t j = size - 1; j > i; j--)
+    for (int i = 0; i < size - 1; i++)
+        for (int j = size - 1; j > i; j--)
             if (a[j - 1] > a[j])
                 swap(&a[j - 1], &a[j]);
+}
+
+long long getNCmpsOfBubble(int *array, const size_t size) {
+    long long countComp = 0;
+    for (size_t i = 0; i < size - 1 && ++countComp; i++)
+        for (size_t j = size - 1; j > i && ++countComp; j--)
+            if (array[j - 1] > array[j] && ++countComp)
+                swap(&array[j - 1], &array[j]);
+
+    return countComp;
 }
 
 void insertionSort (int *a, size_t size) {
@@ -181,7 +220,21 @@ void insertionSort (int *a, size_t size) {
     }
 }
 
-void combsort(int *a, const size_t size) {
+long long getNCmpsOfIntersections(int *array, const size_t size) {
+    long long countComp = 0;
+    for (size_t i = 1; i < size && ++countComp; i++) {
+        int t = array[i];
+        size_t j = i;
+        while (j > 0 && ++countComp && array[j - 1] > t && ++countComp) {
+            array[j] = array[j - 1];
+            j--;
+        }
+        array[j] = t;
+    }
+    return countComp;
+}
+
+void combSort(int *a, const size_t size) {
     size_t step = size;
     int swapped = 1;
     while (step > 1 || swapped) {
@@ -194,6 +247,23 @@ void combsort(int *a, const size_t size) {
                 swapped = 1;
             }
     }
+}
+
+long long getNCmpsOfComb(int *array, const size_t size) {
+    size_t step = size;
+    int swapped = 1;
+    long long countComp = 0;
+    while (step > 1 && ++countComp || swapped && ++countComp) {
+        if (step > 1 && ++countComp)
+            step /= 1.24733;
+        swapped = 0;
+        for (size_t i = 0, j = i + step; j < size && ++countComp; ++i, ++j)
+            if (array[i] > array[j] && ++countComp) {
+                swap(&array[i], &array[j]);
+                swapped = 1;
+            }
+    }
+    return countComp;
 }
 
 int digit(int n, int k, int N, int M) {
@@ -231,15 +301,52 @@ void radixSort(int *a, size_t n) {
     _radixSort(a, a + n, 8);
 }
 
-void timeExperiment() {
+void getMinMax ( const int *a , size_t size , int * min , int * max ) {
+    * min = a [0];
+    * max = a [0];
+    for (int i = 1; i < size ; i ++) {
+        if ( a [ i ] < * min )
+            * min = a [ i ];
+        else if( a [ i ] > * max )
+            * max = a [ i ];
+    }
+}
+
+void countSort (int *a , const size_t size ) {
+    int min, max;
+    getMinMax(a, size, &min, &max);
+    int k = max - min + 1;
+
+    // выделение памяти под динамический массив из k элементов,
+    // где каждый из элементов равен 0
+    int *b = (int *) calloc(k, sizeof(int));
+    for (int i = 0; i < size; i++)
+
+        b[a[i] - min]++;
+
+    int ind = 0;
+    for (int i = 0; i < k; i++) {
+        int x = b[i];
+        for (int j = 0; j < x; j++)
+            a[ind++] = min + i;
+    }
+
+    // освобождение памяти, выделенной под динамический массив
+    free(b);
+}
+
+
+
+    void timeExperiment() {
     // описание функций сортировки
     SortFunc sorts[] = {
             {selectionSort, "selectionSort"},
             {insertionSort, "insertionSort"},
-            {Shellsort,     "Shellsort"},
-            {combsort,      "combsort"},
+            {shellSort,     "Shellsort"},
+            {combSort,      "combSort"},
             {bubbleSort,    "bubbleSort"},
             {radixSort,     "radixSort"},
+            {countSort, "countSort"}
     };
     const unsigned FUNCS_N = ARRAY_SIZE
     (sorts);
