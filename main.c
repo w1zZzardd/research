@@ -6,7 +6,7 @@
 
 #define ARRAY_SIZE(a)sizeof(a)/sizeof(a[0])
 
-#define TIME_TEST(testCode,time) { \
+#define TIME_TEST(testCode, time) { \
     clock_t start_time = clock () ; \
     testCode \
         clock_t end_time = clock () ;\
@@ -30,13 +30,21 @@ typedef struct GeneratingFunc {
     // используемое при выводе
 } GeneratingFunc;
 
+// функция сортировки
+typedef struct nCompSort {
+    long long (*nComp)(int *a, size_t n); // указатель на функцию
+    // сортировки
+    char name[64];                   // имя сортировки,
+    // используемое при выводе
+} nCompSort;
+
 void swap(int *a, int *b) {
     int t = *a;
     *a = *b;
     *b = t;
 }
 
-bool isOrdered (const int *a, size_t size) {
+bool isOrdered(const int *a, size_t size) {
     for (int i = 1; i < size - 1; i++) {
         if (a[i - 1] > a[i])
             return false;
@@ -54,22 +62,22 @@ void outputArray(const int *a, const int n) {
         printf("%d\n", a[i]);
 }
 
-void generateRandomArray (int *a, size_t size) {
+void generateRandomArray(int *a, size_t size) {
     srand(time(0));
     for (int i = 0; i < size; i++) {
         a[i] = 100000 - rand() % 100000;
     }
 }
 
-int cmpReverse (const void *a, const void *b){
+int cmpReverse(const void *a, const void *b) {
     return *(const int *) b - *(const int *) a;
 }
 
-int cmp (const void *a, const void *b){
+int cmp(const void *a, const void *b) {
     return *(const int *) a - *(const int *) b;
 }
 
-void generateOrderedArray (int *a, size_t size){
+void generateOrderedArray(int *a, size_t size) {
     srand(time(0));
     for (int i = 0; i < size; i++) {
         a[i] = 100000 - rand() % 100000;
@@ -77,7 +85,7 @@ void generateOrderedArray (int *a, size_t size){
     qsort(a, size, sizeof(int), cmp);
 }
 
-void generateOrderedBackwards (int *a, size_t size){
+void generateOrderedBackwards(int *a, size_t size) {
     srand(time(0));
     for (int i = 0; i < size; i++) {
         a[i] = 100000 - rand() % 100000;
@@ -155,7 +163,7 @@ long long getNCmpsOfSelectionSort(int *array, const size_t size) {
     return countComp;
 }
 
-void shellSort(int* a, int length) {
+void shellSort(int *a, int length) {
     unsigned step = length / 2, compare = 0, swap = 0;
     while (step > 0) {
         for (int i = 0; i < length; i++) {
@@ -208,8 +216,8 @@ long long getNCmpsOfBubble(int *array, const size_t size) {
     return countComp;
 }
 
-void insertionSort (int *a, size_t size) {
-    for (size_t i = 1; i < size; i++){
+void insertionSort(int *a, size_t size) {
+    for (size_t i = 1; i < size; i++) {
         int t = a[i];
         int j = i;
         while (j > 0 && a[j - 1] > t) {
@@ -301,43 +309,57 @@ void radixSort(int *a, size_t n) {
     _radixSort(a, a + n, 8);
 }
 
-void getMinMax ( const int *a , size_t size , int * min , int * max ) {
-    * min = a [0];
-    * max = a [0];
-    for (int i = 1; i < size ; i ++) {
-        if ( a [ i ] < * min )
-            * min = a [ i ];
-        else if( a [ i ] > * max )
-            * max = a [ i ];
+void getMinMax(const int *a, size_t size, int *min, int *max) {
+    *min = a[0];
+    *max = a[0];
+    for (int i = 1; i < size; i++) {
+        if (a[i] < *min)
+            *min = a[i];
+        else if (a[i] > *max)
+            *max = a[i];
     }
 }
 
-void countSort (int *a , const size_t size ) {
-    int min, max;
-    getMinMax(a, size, &min, &max);
-    int k = max - min + 1;
+void checkNComp(long long (*nComp )(int *a, size_t n),
+                void (*generateFunc)(int *, size_t),
+                size_t size, char *experimentName, char *name) {
+    static size_t runCounter = 1;
 
-    // выделение памяти под динамический массив из k элементов,
-    // где каждый из элементов равен 0
-    int *b = (int *) calloc(k, sizeof(int));
-    for (int i = 0; i < size; i++)
+    // генерация последовательности
+    static int innerBuffer[100000];
+    generateFunc(innerBuffer, size);
+    printf("Run #%zu| ", runCounter++);
+    printf("Name: %s\n", experimentName);
 
-        b[a[i] - min]++;
+    // замер времени
+    long long nComps = nComp(innerBuffer, size);
 
-    int ind = 0;
-    for (int i = 0; i < k; i++) {
-        int x = b[i];
-        for (int j = 0; j < x; j++)
-            a[ind++] = min + i;
+    // результаты замера
+    printf("Status: ");
+    if (isOrdered(innerBuffer, size)) {
+        printf("OK! Comps: %lld\n", nComps);
+
+        // запись в файл
+        char filename[256];
+        sprintf(filename, "./data/comps/%s.csv", experimentName);
+        FILE *f = fopen(filename, "a");
+        if (f == NULL) {
+            printf("FileOpenError %s", filename);
+            exit(1);
+        }
+        fprintf(f, "%zu; %lld\n", size, nComps);
+        fclose(f);
+    } else {
+        printf("Wrong!\n");
+
+        // вывод массива, который не смог быть отсортирован
+        outputArray(innerBuffer, size);
+
+        exit(1);
     }
-
-    // освобождение памяти, выделенной под динамический массив
-    free(b);
 }
 
-
-
-    void timeExperiment() {
+void timeExperiment() {
     // описание функций сортировки
     SortFunc sorts[] = {
             {selectionSort, "selectionSort"},
@@ -345,11 +367,19 @@ void countSort (int *a , const size_t size ) {
             {shellSort,     "Shellsort"},
             {combSort,      "combSort"},
             {bubbleSort,    "bubbleSort"},
-            {radixSort,     "radixSort"},
-            {countSort, "countSort"}
+            {radixSort,     "radixSort"}
     };
-    const unsigned FUNCS_N = ARRAY_SIZE
-    (sorts);
+    const unsigned FUNCS_N = ARRAY_SIZE (sorts);
+
+    nCompSort nComps[] = {
+            {getNCmpsOfSelectionSort, "getNCmpsOfSelectionSort"},
+            {getNCmpsOfIntersections, "getNCmpsOfIntersections"},
+            {getNCmpsOfBubble,        "getNCmpsOfBubble"},
+            {getNCmpsOfComb,          "combSortN"},
+            {getNCmpsOfShell,         "getNCmpsOfShell"},
+    };
+
+    const unsigned COMPS_N = ARRAY_SIZE(nComps);
 
     GeneratingFunc generatingFuncs[] = {
             // генерируется случайный массив
@@ -360,7 +390,7 @@ void countSort (int *a , const size_t size ) {
             {generateOrderedBackwards, " orderedBackwards "}
     };
     const unsigned CASES_N = ARRAY_SIZE
-    (generatingFuncs);
+                             (generatingFuncs);
 
     // запись статистики в файл
     for (size_t size = 10000; size <= 100000; size += 10000) {
@@ -379,7 +409,28 @@ void countSort (int *a , const size_t size ) {
         }
         printf("\n");
     }
+
+
+// запись статистики в файл
+    for (size_t size = 10000; size <= 100000; size += 10000) {
+        printf(" - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -\n");
+        printf("Size : %zu\n", size);
+        for (int i = 0; i < COMPS_N; i++) {
+            for (int j = 0; j < CASES_N; j++) {
+                // генерация имени файла
+                static char filename[128];
+                sprintf(filename, "%s_%s_comps",
+                        nComps[i].name, generatingFuncs[j].name);
+                checkNComp(nComps[i]
+                                   .nComp,
+                           generatingFuncs[j].generate,
+                           size, filename, nComps[i].name);
+            }
+        }
+        printf("\n");
+    }
 }
+
 
 int main() {
     timeExperiment();
